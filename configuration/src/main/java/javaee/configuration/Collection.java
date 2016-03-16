@@ -25,6 +25,22 @@ public class Collection {
         return data.containsKey(key);
     }
 
+    public Boolean bool(String key) {
+        return null;
+    }
+
+    public Boolean bool(String key, Boolean defaultValue) {
+        return null;
+    }
+
+    public Integer integer(String key) {
+        return null;
+    }
+
+    public Integer integer(String key, Integer defaultValue) {
+        return null;
+    }
+
     public String str(String key) {
         return data.get(key);
     }
