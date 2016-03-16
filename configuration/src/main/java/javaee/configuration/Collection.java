@@ -26,7 +26,7 @@ public class Collection {
     }
 
     public Boolean bool(String key) {
-        return null;
+        return Boolean.parseBoolean(data.get(key));
     }
 
     public Boolean bool(String key, Boolean defaultValue) {

@@ -25,6 +25,10 @@ public class CollectionTest {
     private static final String STR_VALUE = "v";
     private static final String KEY = "k";
     private static final String NAME = "simple";
+    private static final String BOOL_STR_TRUE_VALUE = "true";
+    private static final String BOOL_STR_FALSE_VALUE = "false";
+    private static final Boolean BOOL_TRUE_VALUE = true;
+    private static final Boolean BOOL_FALSE_VALUE = false;
 
     @Mock
     private Map<String, String> data;
@@ -61,6 +65,26 @@ public class CollectionTest {
         when(data.containsKey(key)).thenReturn(false);
         assertThat(collection.contains(key), equalTo(false));
         verify(data).containsKey(key);
+    }
+
+    @Test
+    public void boolCollectionCalled() throws Exception {
+        collection.bool(KEY);
+        verify(data).get(KEY);
+    }
+
+    @Test
+    public void boolTrueValueReturned() throws Exception {
+        when(data.get(KEY)).thenReturn(BOOL_STR_TRUE_VALUE);
+        assertThat(collection.bool(KEY), equalTo(BOOL_TRUE_VALUE));
+        verify(data).get(KEY);
+    }
+
+    @Test
+    public void boolFalseValueReturned() throws Exception {
+        when(data.get(KEY)).thenReturn(BOOL_STR_FALSE_VALUE);
+        assertThat(collection.bool(KEY), equalTo(BOOL_FALSE_VALUE));
+        verify(data).get(KEY);
     }
 
     @Test
