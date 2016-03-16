@@ -1,22 +1,28 @@
 package javaee.configuration;
 
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 
-import org.junit.Before;
+import javax.enterprise.event.Event;
+
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.runners.MockitoJUnitRunner;
+
+import javaee.configuration.event.OnInvalidIntegerValue;
 
 @RunWith(MockitoJUnitRunner.class)
 public class CollectionTest {
@@ -38,16 +44,16 @@ public class CollectionTest {
     @Mock
     private Map<String, String> data;
 
-    private Collection collection;
+    @Mock
+    private Event<OnInvalidIntegerValue> event;
 
-    @Before
-    public void prepare() {
-        collection = spy(new Collection(NAME, data));
-    }
+    @Spy
+    @InjectMocks
+    private Collection collection = new Collection(NAME, Collections.emptyMap());
 
     @Test
     public void name() throws Exception {
-        collection = new Collection(NAME, Collections.emptyMap());
+        // collection = new Collection(NAME, Collections.emptyMap());
         assertThat(collection.getName(), equalTo(NAME));
     }
 
@@ -100,28 +106,55 @@ public class CollectionTest {
     }
 
     @Test
+    public void boolOrTrueReturnCollectedValue() throws Exception {
+        doReturn(false).when(collection).bool(KEY);
+        assertThat(collection.boolOrTrue(KEY), equalTo(false));
+    }
+
+    @Test
+    public void boolOrTrueReturnTrue() throws Exception {
+        doReturn(null).when(collection).bool(KEY);
+        assertThat(collection.boolOrTrue(KEY), equalTo(true));
+    }
+
+    @Test
+    public void boolOrFalseReturnCollectedValue() throws Exception {
+        doReturn(true).when(collection).bool(KEY);
+        assertThat(collection.boolOrFalse(KEY), equalTo(true));
+    }
+
+    @Test
+    public void boolOrFalseReturnFalse() throws Exception {
+        doReturn(null).when(collection).bool(KEY);
+        assertThat(collection.boolOrFalse(KEY), equalTo(false));
+    }
+
+    @Test
     public void boolOrDefaultReturnTrueDefaultContainsEvaluated() throws Exception {
-        doReturn(false).when(collection).contains(KEY);
         assertThat(collection.bool(KEY, true), equalTo(true));
-        verify(collection).contains(KEY);
-        verify(collection, never()).bool(KEY);
     }
 
     @Test
     public void boolOrDefaultReturnFalseDefaultContainsEvaluated() throws Exception {
-        doReturn(false).when(collection).contains(KEY);
         assertThat(collection.bool(KEY, false), equalTo(false));
-        verify(collection).contains(KEY);
-        verify(collection, never()).bool(KEY);
     }
 
     @Test
     public void boolOrDefaultReturnCollectedTrue() throws Exception {
-        doReturn(true).when(collection).contains(KEY);
-        doReturn(true).when(collection).bool(KEY);
         assertThat(collection.bool(KEY, true), equalTo(true));
-        verify(collection).contains(KEY);
         verify(collection).bool(KEY);
+    }
+
+    @Test
+    public void boolOrDefaultReturnNotNull() throws Exception {
+        doReturn(null).when(collection).bool(KEY);
+        assertThat(collection.bool(KEY, BOOL_TRUE_VALUE), equalTo(BOOL_TRUE_VALUE));
+    }
+
+    @Test
+    public void boolOrDefaultReturnNotNullIfDefaultValueIsNull() throws Exception {
+        doReturn(null).when(collection).bool(KEY);
+        assertThat(collection.bool(KEY, null), equalTo(Collection.DEFAULT_BOOLEAN_VALUE));
     }
 
     @Test
@@ -138,11 +171,22 @@ public class CollectionTest {
     }
 
     @Test
+    public void integerInvalidIntegerValue() throws Exception {
+        ArgumentCaptor<OnInvalidIntegerValue> invalidIntegerEvent = ArgumentCaptor.forClass(OnInvalidIntegerValue.class);
+        when(data.get(KEY)).thenReturn("ABC");
+        assertThat(collection.integer(KEY), nullValue());
+        verify(event).fire(invalidIntegerEvent.capture());
+        OnInvalidIntegerValue data = invalidIntegerEvent.getValue();
+        assertThat(data.getCollection(), equalTo(NAME));
+        assertThat(data.getKey(), equalTo(KEY));
+        assertThat(data.getValue(), equalTo("ABC"));
+        assertThat(data.getException(), instanceOf(NumberFormatException.class));
+    }
+
+    @Test
     public void integerOrDefaultReturnDefaultContainsEvaluated() throws Exception {
         doReturn(false).when(collection).contains(KEY);
         assertThat(collection.integer(KEY, DEFAULT_INTEGER_VALUE), equalTo(DEFAULT_INTEGER_VALUE));
-        verify(collection).contains(KEY);
-        verify(collection, never()).integer(KEY);
     }
 
     @Test
@@ -150,8 +194,28 @@ public class CollectionTest {
         doReturn(true).when(collection).contains(KEY);
         doReturn(INTEGER_VALUE).when(collection).integer(KEY);
         assertThat(collection.integer(KEY, DEFAULT_INTEGER_VALUE), equalTo(INTEGER_VALUE));
-        verify(collection).contains(KEY);
         verify(collection).integer(KEY);
+    }
+
+    @Test
+    public void integerOrDefaultReturnNotNull() throws Exception {
+        doReturn(true).when(collection).contains(KEY);
+        doReturn(null).when(collection).integer(KEY);
+        assertThat(collection.integer(KEY, DEFAULT_INTEGER_VALUE), equalTo(DEFAULT_INTEGER_VALUE));
+    }
+
+    @Test
+    public void integerOrDefaultReturnNotNullIfDefaultValueIsNull() throws Exception {
+        doReturn(true).when(collection).contains(KEY);
+        doReturn(null).when(collection).integer(KEY);
+        assertThat(collection.integer(KEY, null), equalTo(Collection.DEFAULT_INTEGER_VALUE));
+    }
+
+    @Test
+    public void integerOrDefaultReturnNotNulllIfNotContainsEntryl() throws Exception {
+        doReturn(false).when(collection).contains(KEY);
+        doReturn(null).when(collection).integer(KEY);
+        assertThat(collection.integer(KEY, null), equalTo(Collection.DEFAULT_INTEGER_VALUE));
     }
 
     @Test
@@ -169,28 +233,52 @@ public class CollectionTest {
 
     @Test
     public void strOrDefaultReturnDefaultContainsEvaluated() throws Exception {
-        doReturn(false).when(collection).contains(KEY);
         assertThat(collection.str(KEY, DEFAULT_STRING_VALUE), equalTo(DEFAULT_STRING_VALUE));
-        verify(collection).contains(KEY);
-        verify(collection, never()).str(KEY);
     }
 
     @Test
     public void strOrDefaultReturnCollectedContainsEvaluated() throws Exception {
-        doReturn(true).when(collection).contains(KEY);
         doReturn(STR_VALUE).when(collection).str(KEY);
         assertThat(collection.str(KEY, DEFAULT_STRING_VALUE), equalTo(STR_VALUE));
-        verify(collection).contains(KEY);
         verify(collection).str(KEY);
     }
 
     @Test
-    public void strOrDefaultReturnNullIfDefaultKeySet() throws Exception {
-        doReturn(true).when(collection).contains(KEY);
+    public void strOrDefaultReturnNotNull() throws Exception {
         doReturn(null).when(collection).str(KEY);
-        assertThat(collection.str(KEY, DEFAULT_STRING_VALUE), nullValue());
-        verify(collection).contains(KEY);
-        verify(collection).str(KEY);
+        assertThat(collection.str(KEY, DEFAULT_STRING_VALUE), equalTo(DEFAULT_STRING_VALUE));
+    }
+
+    @Test
+    public void strOrDefaultReturnNotNullIfDefaultValueIsNull() throws Exception {
+        doReturn(null).when(collection).str(KEY);
+        assertThat(collection.str(KEY, null), equalTo(Collection.DEFAULT_STRING_VALUE));
+    }
+
+    @Test
+    public void strOrDefaultReturnNotNullIfNotContainsEntry() throws Exception {
+        assertThat(collection.str(KEY, null), equalTo(Collection.DEFAULT_STRING_VALUE));
+    }
+
+    @Test
+    public void immutableInputData() throws Exception {
+        Map<String, String> data = new HashMap<>();
+        data.put(KEY, STR_VALUE);
+        collection = new Collection(NAME, data);
+        assertThat(collection.contains(KEY), equalTo(true));
+        data.remove(KEY);
+        assertThat(collection.contains(KEY), equalTo(true));
+    }
+
+    @Test
+    public void immutableOutputData() throws Exception {
+        Map<String, String> data = new HashMap<>();
+        data.put(KEY, STR_VALUE);
+        collection = new Collection(NAME, data);
+        assertThat(collection.contains(KEY), equalTo(true));
+        data = collection.getData();
+        data.remove(KEY);
+        assertThat(collection.contains(KEY), equalTo(true));
     }
 
 }
