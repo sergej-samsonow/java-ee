@@ -25,10 +25,15 @@ public class CollectionTest {
     private static final String STR_VALUE = "v";
     private static final String KEY = "k";
     private static final String NAME = "simple";
+
     private static final String BOOL_STR_TRUE_VALUE = "true";
     private static final String BOOL_STR_FALSE_VALUE = "false";
     private static final Boolean BOOL_TRUE_VALUE = true;
     private static final Boolean BOOL_FALSE_VALUE = false;
+
+    private static final String INTEGER_STR_VALUE = "4801";
+    private static final Integer INTEGER_VALUE = 4801;
+    private static final Integer DEFAULT_INTEGER_VALUE = 8589;
 
     @Mock
     private Map<String, String> data;
@@ -117,6 +122,36 @@ public class CollectionTest {
         assertThat(collection.bool(KEY, true), equalTo(true));
         verify(collection).contains(KEY);
         verify(collection).bool(KEY);
+    }
+
+    @Test
+    public void integerCollectionCalled() throws Exception {
+        collection.integer(KEY);
+        verify(data).get(KEY);
+    }
+
+    @Test
+    public void integerValueReturned() throws Exception {
+        when(data.get(KEY)).thenReturn(INTEGER_STR_VALUE);
+        assertThat(collection.integer(KEY), equalTo(INTEGER_VALUE));
+        verify(data).get(KEY);
+    }
+
+    @Test
+    public void integerOrDefaultReturnDefaultContainsEvaluated() throws Exception {
+        doReturn(false).when(collection).contains(KEY);
+        assertThat(collection.integer(KEY, DEFAULT_INTEGER_VALUE), equalTo(DEFAULT_INTEGER_VALUE));
+        verify(collection).contains(KEY);
+        verify(collection, never()).integer(KEY);
+    }
+
+    @Test
+    public void integerOrDefaultReturnCollectedContainsEvaluated() throws Exception {
+        doReturn(true).when(collection).contains(KEY);
+        doReturn(INTEGER_VALUE).when(collection).integer(KEY);
+        assertThat(collection.integer(KEY, DEFAULT_INTEGER_VALUE), equalTo(INTEGER_VALUE));
+        verify(collection).contains(KEY);
+        verify(collection).integer(KEY);
     }
 
     @Test

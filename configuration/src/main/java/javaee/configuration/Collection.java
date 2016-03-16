@@ -38,12 +38,17 @@ public class Collection {
         return defaultValue;
     }
 
+    // TODO return null and trigger cdi event on parse exception
     public Integer integer(String key) {
-        return null;
+        String content = data.get(key);
+        return content != null ? Integer.parseInt(content) : null;
     }
 
     public Integer integer(String key, Integer defaultValue) {
-        return null;
+        if (contains(key)) {
+            return integer(key);
+        }
+        return defaultValue;
     }
 
     public String str(String key) {
