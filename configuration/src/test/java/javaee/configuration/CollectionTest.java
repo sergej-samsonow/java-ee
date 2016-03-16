@@ -12,6 +12,7 @@ import static org.mockito.Mockito.when;
 import java.util.Collections;
 import java.util.Map;
 
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
@@ -24,18 +25,25 @@ public class CollectionTest {
     private static final String STR_VALUE = "v";
     private static final String KEY = "k";
     private static final String NAME = "simple";
+
     @Mock
     private Map<String, String> data;
 
+    private Collection collection;
+
+    @Before
+    public void prepare() {
+        collection = spy(new Collection(NAME, data));
+    }
+
     @Test
     public void name() throws Exception {
-        Collection collection = new Collection(NAME, Collections.emptyMap());
+        collection = new Collection(NAME, Collections.emptyMap());
         assertThat(collection.getName(), equalTo(NAME));
     }
 
     @Test
     public void data() throws Exception {
-        Collection collection = new Collection(NAME, data);
         assertThat(collection.getData(), equalTo(data));
     }
 
@@ -43,7 +51,6 @@ public class CollectionTest {
     public void containsTrue() throws Exception {
         String key = KEY;
         when(data.containsKey(key)).thenReturn(true);
-        Collection collection = new Collection(NAME, data);
         assertThat(collection.contains(key), equalTo(true));
         verify(data).containsKey(key);
     }
@@ -52,21 +59,18 @@ public class CollectionTest {
     public void containsFalse() throws Exception {
         String key = KEY;
         when(data.containsKey(key)).thenReturn(false);
-        Collection collection = new Collection(NAME, data);
         assertThat(collection.contains(key), equalTo(false));
         verify(data).containsKey(key);
     }
 
     @Test
     public void strCollectionCalled() throws Exception {
-        Collection collection = new Collection(NAME, data);
         collection.str(KEY);
         verify(data).get(KEY);
     }
 
     @Test
     public void strValueReturned() throws Exception {
-        Collection collection = new Collection(NAME, data);
         when(data.get(KEY)).thenReturn(STR_VALUE);
         assertThat(collection.str(KEY), equalTo(STR_VALUE));
         verify(data).get(KEY);
@@ -74,7 +78,6 @@ public class CollectionTest {
 
     @Test
     public void strOrDefaultReturnDefaultContainsEvaluated() throws Exception {
-        Collection collection = spy(new Collection(NAME, data));
         doReturn(false).when(collection).contains(KEY);
         assertThat(collection.str(KEY, DEFAULT_STRING_VALUE), equalTo(DEFAULT_STRING_VALUE));
         verify(collection).contains(KEY);
@@ -83,7 +86,6 @@ public class CollectionTest {
 
     @Test
     public void strOrDefaultReturnCollectedContainsEvaluated() throws Exception {
-        Collection collection = spy(new Collection(NAME, data));
         doReturn(true).when(collection).contains(KEY);
         doReturn(STR_VALUE).when(collection).str(KEY);
         assertThat(collection.str(KEY, DEFAULT_STRING_VALUE), equalTo(STR_VALUE));
@@ -93,7 +95,6 @@ public class CollectionTest {
 
     @Test
     public void strOrDefaultReturnNullIfDefaultKeySet() throws Exception {
-        Collection collection = spy(new Collection(NAME, data));
         doReturn(true).when(collection).contains(KEY);
         doReturn(null).when(collection).str(KEY);
         assertThat(collection.str(KEY, DEFAULT_STRING_VALUE), nullValue());
