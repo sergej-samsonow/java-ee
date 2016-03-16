@@ -1,5 +1,6 @@
 package javaee.configuration;
 
+import java.util.HashMap;
 import java.util.Map;
 
 public class Collection {
@@ -10,16 +11,15 @@ public class Collection {
     public Collection(String name, Map<String, String> data) {
         super();
         this.name = name;
-        this.data = data;
+        this.data = new HashMap<>(data);
     }
 
     public String getName() {
         return name;
     }
 
-    // FIXME immutable map
     public Map<String, String> getData() {
-        return data;
+        return new HashMap<>(data);
     }
 
     public boolean contains(String key) {
