@@ -17,6 +17,7 @@ public class Collection {
         return name;
     }
 
+    // FIXME immutable map
     public Map<String, String> getData() {
         return data;
     }
@@ -26,11 +27,15 @@ public class Collection {
     }
 
     public Boolean bool(String key) {
-        return Boolean.parseBoolean(data.get(key));
+        String content = data.get(key);
+        return content != null ? Boolean.parseBoolean(content) : null;
     }
 
     public Boolean bool(String key, Boolean defaultValue) {
-        return null;
+        if (contains(key)) {
+            return bool(key);
+        }
+        return defaultValue;
     }
 
     public Integer integer(String key) {

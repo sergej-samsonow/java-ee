@@ -81,10 +81,42 @@ public class CollectionTest {
     }
 
     @Test
+    public void boolNullValueIfEntryIsNull() throws Exception {
+        when(data.get(KEY)).thenReturn(null);
+        assertThat(collection.bool(KEY), nullValue());
+        verify(data).get(KEY);
+    }
+
+    @Test
     public void boolFalseValueReturned() throws Exception {
         when(data.get(KEY)).thenReturn(BOOL_STR_FALSE_VALUE);
         assertThat(collection.bool(KEY), equalTo(BOOL_FALSE_VALUE));
         verify(data).get(KEY);
+    }
+
+    @Test
+    public void boolOrDefaultReturnTrueDefaultContainsEvaluated() throws Exception {
+        doReturn(false).when(collection).contains(KEY);
+        assertThat(collection.bool(KEY, true), equalTo(true));
+        verify(collection).contains(KEY);
+        verify(collection, never()).bool(KEY);
+    }
+
+    @Test
+    public void boolOrDefaultReturnFalseDefaultContainsEvaluated() throws Exception {
+        doReturn(false).when(collection).contains(KEY);
+        assertThat(collection.bool(KEY, false), equalTo(false));
+        verify(collection).contains(KEY);
+        verify(collection, never()).bool(KEY);
+    }
+
+    @Test
+    public void boolOrDefaultReturnCollectedTrue() throws Exception {
+        doReturn(true).when(collection).contains(KEY);
+        doReturn(true).when(collection).bool(KEY);
+        assertThat(collection.bool(KEY, true), equalTo(true));
+        verify(collection).contains(KEY);
+        verify(collection).bool(KEY);
     }
 
     @Test
@@ -125,4 +157,5 @@ public class CollectionTest {
         verify(collection).contains(KEY);
         verify(collection).str(KEY);
     }
+
 }
