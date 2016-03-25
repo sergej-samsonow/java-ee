@@ -4,9 +4,10 @@ import java.util.HashMap;
 import java.util.Map;
 
 import javax.enterprise.event.Event;
+import javax.inject.Inject;
 import javax.validation.constraints.NotNull;
 
-import javaee.configuration.event.OnInvalidIntegerValue;
+import javaee.configuration.event.collection.InvalidIntegerValue;
 
 public class Collection {
 
@@ -16,7 +17,9 @@ public class Collection {
 
     private String name;
     private Map<String, String> data;
-    private Event<OnInvalidIntegerValue> onInvalidIntegerValue;
+
+    @Inject
+    private Event<InvalidIntegerValue> invalidIntegerValue;
 
     public Collection(String name, Map<String, String> data) {
         super();
@@ -41,6 +44,23 @@ public class Collection {
         return content != null ? Boolean.parseBoolean(content) : null;
     }
 
+    public String str(String key) {
+        return data.get(key);
+    }
+
+    public Integer integer(String key) {
+        String content = data.get(key);
+        if (content != null) {
+            try {
+                return Integer.parseInt(content);
+            }
+            catch (NumberFormatException e) {
+                invalidIntegerValue.fire(new InvalidIntegerValue(getName(), key, content, e));
+            }
+        }
+        return null;
+    }
+
     public @NotNull Boolean boolOrTrue(String key) {
         Boolean entry = bool(key);
         return entry != null ? entry : true;
@@ -51,7 +71,7 @@ public class Collection {
         return entry != null ? entry : false;
     }
 
-    public Boolean bool(String key, Boolean defaultValue) {
+    public @NotNull Boolean bool(String key, Boolean defaultValue) {
         Boolean entry = bool(key);
         if (entry == null && defaultValue == null) {
             return Collection.DEFAULT_BOOLEAN_VALUE;
@@ -60,19 +80,6 @@ public class Collection {
             return defaultValue;
         }
         return entry;
-    }
-
-    public Integer integer(String key) {
-        String content = data.get(key);
-        if (content != null) {
-            try {
-                return Integer.parseInt(content);
-            }
-            catch (NumberFormatException e) {
-                onInvalidIntegerValue.fire(new OnInvalidIntegerValue(getName(), key, content, e));
-            }
-        }
-        return null;
     }
 
     public @NotNull Integer integer(String key, Integer defaultValue) {
@@ -86,10 +93,6 @@ public class Collection {
         return entry;
     }
 
-    public String str(String key) {
-        return data.get(key);
-    }
-
     public @NotNull String str(String key, String defaultValue) {
         String entry = str(key);
         if (entry == null && defaultValue == null) {
@@ -100,5 +103,4 @@ public class Collection {
         }
         return entry;
     }
-
 }

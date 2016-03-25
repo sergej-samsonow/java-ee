@@ -1,8 +1,27 @@
 package javaee.configuration;
 
-import javax.ejb.Stateless;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-@Stateless
-public class Configuration {
+import javax.inject.Qualifier;
+
+/**
+ * Configuration injection qualifier expected collection name as parameter.
+ *
+ * @author Sergej Samsonow<sergej.samsonow.public@googlemail.com>
+ */
+@Qualifier
+@Retention(RetentionPolicy.RUNTIME)
+@Target({ ElementType.FIELD, ElementType.METHOD })
+public @interface Configuration {
+
+    /**
+     * Collection name.
+     *
+     * @return name.
+     */
+    String value() default "";
 
 }
