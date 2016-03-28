@@ -1,6 +1,7 @@
 package javaee.configuration.internal;
 
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 import java.util.HashMap;
@@ -47,6 +48,16 @@ public class ConfigurationCacheTest {
         Map<String, String> stored = cache.get("x");
         stored.remove("A");
         assertThat(cache.get("x").containsKey("A"), equalTo(true));
+    }
+
+    @Test
+    public void getReturnNullIfEmpty() throws Exception {
+        assertThat(cache.get("Y"), nullValue());
+    }
+
+    @Test
+    public void storeNullValue() throws Exception {
+        assertThat(cache.store("Y", null).size(), equalTo(0));
     }
 
 }
