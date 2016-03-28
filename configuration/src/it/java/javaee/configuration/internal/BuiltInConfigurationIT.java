@@ -19,8 +19,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.runners.MockitoJUnitRunner;
 
-import javaee.configuration.event.builtinconfiguration.ErrorOnPropertiesLoad;
-import javaee.configuration.event.builtinconfiguration.PropertiesFileNotFound;
+import javaee.configuration.event.BuiltInConfigurationErrorOnLoad;
+import javaee.configuration.event.BuiltInConfigurationNotFound;
 
 @RunWith(MockitoJUnitRunner.class)
 public class BuiltInConfigurationIT {
@@ -29,10 +29,10 @@ public class BuiltInConfigurationIT {
     private BuiltInConfiguration configuration;
 
     @Mock
-    private Event<PropertiesFileNotFound> propertiesNotFound;
+    private Event<BuiltInConfigurationNotFound> propertiesNotFound;
 
     @Mock
-    private Event<ErrorOnPropertiesLoad> ioException;
+    private Event<BuiltInConfigurationErrorOnLoad> ioException;
 
     @Test
     public void stream() throws Exception {

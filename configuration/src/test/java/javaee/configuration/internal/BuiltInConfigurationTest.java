@@ -17,7 +17,6 @@ import java.util.Map;
 import javax.enterprise.event.Event;
 
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
@@ -26,8 +25,8 @@ import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.runners.MockitoJUnitRunner;
 
-import javaee.configuration.event.builtinconfiguration.ErrorOnPropertiesLoad;
-import javaee.configuration.event.builtinconfiguration.PropertiesFileNotFound;
+import javaee.configuration.event.BuiltInConfigurationErrorOnLoad;
+import javaee.configuration.event.BuiltInConfigurationNotFound;
 
 @RunWith(MockitoJUnitRunner.class)
 public class BuiltInConfigurationTest {
@@ -46,10 +45,10 @@ public class BuiltInConfigurationTest {
     private PropertiesReader reader;
 
     @Mock
-    private Event<PropertiesFileNotFound> propertiesNotFound;
+    private Event<BuiltInConfigurationNotFound> notFound;
 
     @Mock
-    private Event<ErrorOnPropertiesLoad> ioException;
+    private Event<BuiltInConfigurationErrorOnLoad> errorOnLoad;
 
     private String id = "Unique.id";
     private String collection = "x";
@@ -80,7 +79,6 @@ public class BuiltInConfigurationTest {
         assertThat(configuration.path("data"), equalTo("/data.properties"));
     }
 
-    @Ignore
     @Test
     public void dataClazzParameterNull() throws Exception {
         Map<String, String> result = configuration.data(null, "collection");
@@ -127,9 +125,9 @@ public class BuiltInConfigurationTest {
     @Test
     public void dataStreamFirePropertiesFileNotFound() throws Exception {
         doReturn(null).when(configuration).stream(clazz, path);
-        ArgumentCaptor<PropertiesFileNotFound> captor = ArgumentCaptor.forClass(PropertiesFileNotFound.class);
+        ArgumentCaptor<BuiltInConfigurationNotFound> captor = ArgumentCaptor.forClass(BuiltInConfigurationNotFound.class);
         configuration.data(clazz, collection);
-        verify(propertiesNotFound).fire(captor.capture());
+        verify(notFound).fire(captor.capture());
         assertThat(captor.getValue().getPath(), equalTo(path));
     }
 
@@ -152,10 +150,10 @@ public class BuiltInConfigurationTest {
     public void dataIoExceptionEvent() throws Exception {
         IOException exception = spy(new IOException("X"));
         doThrow(exception).when(reader).read(stream);
-        ArgumentCaptor<ErrorOnPropertiesLoad> errorOnPropertiesLoad = ArgumentCaptor.forClass(ErrorOnPropertiesLoad.class);
+        ArgumentCaptor<BuiltInConfigurationErrorOnLoad> builtInConfigurationErrorOnLoad = ArgumentCaptor.forClass(BuiltInConfigurationErrorOnLoad.class);
         configuration.data(clazz, collection);
-        verify(ioException).fire(errorOnPropertiesLoad.capture());
-        ErrorOnPropertiesLoad data = errorOnPropertiesLoad.getValue();
+        verify(errorOnLoad).fire(builtInConfigurationErrorOnLoad.capture());
+        BuiltInConfigurationErrorOnLoad data = builtInConfigurationErrorOnLoad.getValue();
         assertThat(data.getException(), equalTo(exception));
         assertThat(data.getPath(), equalTo("/path"));
     }

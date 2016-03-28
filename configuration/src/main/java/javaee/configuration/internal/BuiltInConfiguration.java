@@ -12,8 +12,8 @@ import javax.enterprise.event.Event;
 import javax.inject.Inject;
 import javax.validation.constraints.NotNull;
 
-import javaee.configuration.event.builtinconfiguration.ErrorOnPropertiesLoad;
-import javaee.configuration.event.builtinconfiguration.PropertiesFileNotFound;
+import javaee.configuration.event.BuiltInConfigurationErrorOnLoad;
+import javaee.configuration.event.BuiltInConfigurationNotFound;
 
 @Singleton
 @ConcurrencyManagement(ConcurrencyManagementType.BEAN)
@@ -23,10 +23,10 @@ public class BuiltInConfiguration {
     private ConfigurationCache cache = new ConfigurationCache();
 
     @Inject
-    private Event<ErrorOnPropertiesLoad> ioException;
+    private Event<BuiltInConfigurationErrorOnLoad> errorOnLoad;
 
     @Inject
-    private Event<PropertiesFileNotFound> propertiesNotFound;
+    private Event<BuiltInConfigurationNotFound> notFound;
 
     protected String id(Class<?> clazz, String collection) {
         return clazz.getName() + "." + collection;
@@ -59,7 +59,7 @@ public class BuiltInConfiguration {
         String path = path(collection);
         InputStream stream = stream(clazz, path);
         if (stream == null) {
-            propertiesNotFound.fire(new PropertiesFileNotFound(path));
+            notFound.fire(new BuiltInConfigurationNotFound(path));
             return cache.store(id, data);
         }
 
@@ -68,7 +68,7 @@ public class BuiltInConfiguration {
             data = reader.read(stream);
         }
         catch (IOException e) {
-            ioException.fire(new ErrorOnPropertiesLoad(path, e));
+            errorOnLoad.fire(new BuiltInConfigurationErrorOnLoad(path, e));
         }
         return cache.store(id, data);
     }
