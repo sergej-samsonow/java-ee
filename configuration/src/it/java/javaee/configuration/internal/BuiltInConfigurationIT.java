@@ -2,22 +2,37 @@ package javaee.configuration.internal;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.mockito.Matchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 
 import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.util.Properties;
+import java.util.Map;
+
+import javax.enterprise.event.Event;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.InjectMocks;
+import org.mockito.Mock;
 import org.mockito.runners.MockitoJUnitRunner;
+
+import javaee.configuration.event.builtinconfiguration.ErrorOnPropertiesLoad;
+import javaee.configuration.event.builtinconfiguration.PropertiesFileNotFound;
 
 @RunWith(MockitoJUnitRunner.class)
 public class BuiltInConfigurationIT {
 
     @InjectMocks
     private BuiltInConfiguration configuration;
+
+    @Mock
+    private Event<PropertiesFileNotFound> propertiesNotFound;
+
+    @Mock
+    private Event<ErrorOnPropertiesLoad> ioException;
 
     @Test
     public void stream() throws Exception {
@@ -31,17 +46,16 @@ public class BuiltInConfigurationIT {
 
     @Test
     public void loadValidProperties() throws Exception {
-        InputStream stream = getClass().getResourceAsStream("/valid.properties");
-        Properties properties = configuration.properties(stream, "/valid.properties");
-        assertThat(properties.getProperty("count"), equalTo("1"));
-        assertThat(properties.getProperty("password"), equalTo("secret"));
+        Map<String, String> map = configuration.data(getClass(), "valid");
+        verify(propertiesNotFound, never()).fire(any());
+        assertThat(map.get("count"), equalTo("1"));
+        assertThat(map.get("password"), equalTo("secret"));
     }
 
     @Test
     public void loadEmptyProperties() throws Exception {
-        InputStream stream = getClass().getResourceAsStream("/empty.properties");
-        Properties properties = configuration.properties(stream, "/empty.properties");
-        assertThat(properties.stringPropertyNames().size(), equalTo(0));
+        Map<String, String> map = configuration.data(BuiltInConfiguration.class, "empty");
+        assertThat(map.size(), equalTo(0));
     }
 
 }

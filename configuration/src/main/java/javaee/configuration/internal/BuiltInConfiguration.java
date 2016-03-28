@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Properties;
 
 import javax.ejb.ConcurrencyManagement;
 import javax.ejb.ConcurrencyManagementType;
@@ -20,6 +19,7 @@ import javaee.configuration.event.builtinconfiguration.PropertiesFileNotFound;
 @ConcurrencyManagement(ConcurrencyManagementType.BEAN)
 public class BuiltInConfiguration {
 
+    private PropertiesReader reader = new PropertiesReader();
     private ConfigurationCache cache = new ConfigurationCache();
 
     @Inject
@@ -36,46 +36,25 @@ public class BuiltInConfiguration {
         return "/" + collection + ".properties";
     }
 
-    protected Properties newProperties() {
-        return new Properties();
-    }
-
     protected InputStream stream(Class<?> clazz, String collection) {
         return clazz.getResourceAsStream(collection);
     }
 
-    protected Properties properties(InputStream stream, String path) {
-        Properties properties = newProperties();
-        try {
-            properties.load(stream);
-        }
-        catch (IOException e) {
-            ioException.fire(new ErrorOnPropertiesLoad(path, e));
-            properties = newProperties();
-        }
-        return properties;
-    }
-
-    protected Map<String, String> map(Properties properties) {
-        Map<String, String> data = new HashMap<>();
-        for (String key : properties.stringPropertyNames()) {
-            data.put(key, properties.getProperty(key));
-        }
-        return data;
-    }
-
     public @NotNull Map<String, String> data(Class<?> clazz, String collection) {
-        Map<String, String> data = new HashMap<>();
+        // validate parameter
+        Map<String, String> data;
         if (clazz == null || collection == null) {
-            return data;
+            return new HashMap<>();
         }
 
+        // return cached data if exists
         String id = id(clazz, collection);
         data = cache.get(id);
         if (data != null) {
             return data;
         }
 
+        // open stream
         data = new HashMap<>();
         String path = path(collection);
         InputStream stream = stream(clazz, path);
@@ -83,6 +62,14 @@ public class BuiltInConfiguration {
             propertiesNotFound.fire(new PropertiesFileNotFound(path));
             return cache.store(id, data);
         }
-        return cache.store(id, map(properties(stream, path)));
+
+        // read stream
+        try {
+            data = reader.read(stream);
+        }
+        catch (IOException e) {
+            ioException.fire(new ErrorOnPropertiesLoad(path, e));
+        }
+        return cache.store(id, data);
     }
 }
