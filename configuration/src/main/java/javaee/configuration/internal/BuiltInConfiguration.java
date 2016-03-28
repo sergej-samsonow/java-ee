@@ -5,7 +5,6 @@ import java.io.InputStream;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
-import java.util.concurrent.ConcurrentHashMap;
 
 import javax.ejb.ConcurrencyManagement;
 import javax.ejb.ConcurrencyManagementType;
@@ -21,7 +20,7 @@ import javaee.configuration.event.builtinconfiguration.PropertiesFileNotFound;
 @ConcurrencyManagement(ConcurrencyManagementType.BEAN)
 public class BuiltInConfiguration {
 
-    private ConcurrentHashMap<String, Map<String, String>> cache = new ConcurrentHashMap<>();
+    private ConfigurationCache cache = new ConfigurationCache();
 
     @Inject
     private Event<ErrorOnPropertiesLoad> ioException;
@@ -31,10 +30,6 @@ public class BuiltInConfiguration {
 
     protected String id(Class<?> clazz, String collection) {
         return clazz.getName() + "." + collection;
-    }
-
-    protected Map<String, String> cache(String id) {
-        return new HashMap<>(cache.get(id));
     }
 
     protected String path(String collection) {
@@ -69,18 +64,14 @@ public class BuiltInConfiguration {
         return data;
     }
 
-    protected Map<String, String> store(String id, Map<String, String> data) {
-        cache.putIfAbsent(id, new HashMap<>(data));
-        return cache(id);
-    }
-
     public @NotNull Map<String, String> data(Class<?> clazz, String collection) {
         Map<String, String> data = new HashMap<>();
         if (clazz == null || collection == null) {
             return data;
         }
+
         String id = id(clazz, collection);
-        data = cache(id);
+        data = cache.get(id);
         if (data != null) {
             return data;
         }
@@ -90,8 +81,8 @@ public class BuiltInConfiguration {
         InputStream stream = stream(clazz, path);
         if (stream == null) {
             propertiesNotFound.fire(new PropertiesFileNotFound(path));
-            return store(id, data);
+            return cache.store(id, data);
         }
-        return store(id, map(properties(stream, path)));
+        return cache.store(id, map(properties(stream, path)));
     }
 }
