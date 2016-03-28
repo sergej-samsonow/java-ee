@@ -129,6 +129,7 @@ public class BuiltInConfigurationTest {
         configuration.data(clazz, collection);
         verify(notFound).fire(captor.capture());
         assertThat(captor.getValue().getPath(), equalTo(path));
+        assertThat(captor.getValue().getClazz(), equalTo(clazz));
     }
 
     @SuppressWarnings("unchecked")

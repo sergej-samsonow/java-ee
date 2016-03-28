@@ -59,7 +59,7 @@ public class BuiltInConfiguration {
         String path = path(collection);
         InputStream stream = stream(clazz, path);
         if (stream == null) {
-            notFound.fire(new BuiltInConfigurationNotFound(path));
+            notFound.fire(new BuiltInConfigurationNotFound(clazz, path));
             return cache.store(id, data);
         }
 
