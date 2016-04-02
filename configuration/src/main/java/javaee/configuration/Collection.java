@@ -7,7 +7,7 @@ import javax.enterprise.event.Event;
 import javax.inject.Inject;
 import javax.validation.constraints.NotNull;
 
-import javaee.configuration.event.collection.InvalidIntegerValue;
+import javaee.configuration.event.CollectionInvalidIntegerValue;
 
 public class Collection {
 
@@ -19,7 +19,7 @@ public class Collection {
     private Map<String, String> data;
 
     @Inject
-    private Event<InvalidIntegerValue> invalidIntegerValue;
+    private Event<CollectionInvalidIntegerValue> collectionInvalidIntegerValue;
 
     public Collection(String name, Map<String, String> data) {
         super();
@@ -55,7 +55,7 @@ public class Collection {
                 return Integer.parseInt(content);
             }
             catch (NumberFormatException e) {
-                invalidIntegerValue.fire(new InvalidIntegerValue(getName(), key, content, e));
+                collectionInvalidIntegerValue.fire(new CollectionInvalidIntegerValue(getName(), key, content, e));
             }
         }
         return null;

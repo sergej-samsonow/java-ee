@@ -1,13 +1,13 @@
-package javaee.configuration.event.collection;
+package javaee.configuration.event;
 
-public class InvalidIntegerValue {
+public class CollectionInvalidIntegerValue {
 
     private String collection;
     private String key;
     private String value;
     private NumberFormatException exception;
 
-    public InvalidIntegerValue(String collection, String key, String entry, NumberFormatException exception) {
+    public CollectionInvalidIntegerValue(String collection, String key, String entry, NumberFormatException exception) {
         super();
         this.collection = collection;
         this.key = key;

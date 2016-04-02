@@ -22,7 +22,7 @@ import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.runners.MockitoJUnitRunner;
 
-import javaee.configuration.event.collection.InvalidIntegerValue;
+import javaee.configuration.event.CollectionInvalidIntegerValue;
 
 @RunWith(MockitoJUnitRunner.class)
 public class CollectionTest {
@@ -45,7 +45,7 @@ public class CollectionTest {
     private Map<String, String> data;
 
     @Mock
-    private Event<InvalidIntegerValue> event;
+    private Event<CollectionInvalidIntegerValue> event;
 
     @Spy
     @InjectMocks
@@ -172,11 +172,11 @@ public class CollectionTest {
 
     @Test
     public void integerInvalidIntegerValue() throws Exception {
-        ArgumentCaptor<InvalidIntegerValue> invalidIntegerEvent = ArgumentCaptor.forClass(InvalidIntegerValue.class);
+        ArgumentCaptor<CollectionInvalidIntegerValue> invalidIntegerEvent = ArgumentCaptor.forClass(CollectionInvalidIntegerValue.class);
         when(data.get(KEY)).thenReturn("ABC");
         assertThat(collection.integer(KEY), nullValue());
         verify(event).fire(invalidIntegerEvent.capture());
-        InvalidIntegerValue data = invalidIntegerEvent.getValue();
+        CollectionInvalidIntegerValue data = invalidIntegerEvent.getValue();
         assertThat(data.getCollection(), equalTo(NAME));
         assertThat(data.getKey(), equalTo(KEY));
         assertThat(data.getValue(), equalTo("ABC"));
