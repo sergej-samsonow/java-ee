@@ -42,9 +42,9 @@ public class BuiltInConfiguration {
 
     public @NotNull Map<String, String> data(Class<?> clazz, String collection) {
         // validate parameter
-        Map<String, String> data;
+        Map<String, String> data = new HashMap<>();
         if (clazz == null || collection == null) {
-            return new HashMap<>();
+            return data;
         }
 
         // return cached data if exists
@@ -53,9 +53,9 @@ public class BuiltInConfiguration {
         if (data != null) {
             return data;
         }
+        data = new HashMap<>();
 
         // open stream
-        data = new HashMap<>();
         String path = path(collection);
         InputStream stream = stream(clazz, path);
         if (stream == null) {
