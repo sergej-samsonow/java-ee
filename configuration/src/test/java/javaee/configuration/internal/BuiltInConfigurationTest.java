@@ -128,6 +128,7 @@ public class BuiltInConfigurationTest {
         ArgumentCaptor<BuiltInConfigurationNotFound> captor = ArgumentCaptor.forClass(BuiltInConfigurationNotFound.class);
         configuration.data(clazz, collection);
         verify(notFound).fire(captor.capture());
+        assertThat(captor.getValue().getCollection(), equalTo(collection));
         assertThat(captor.getValue().getPath(), equalTo(path));
         assertThat(captor.getValue().getClazz(), equalTo(clazz));
     }
@@ -155,6 +156,8 @@ public class BuiltInConfigurationTest {
         configuration.data(clazz, collection);
         verify(errorOnLoad).fire(builtInConfigurationErrorOnLoad.capture());
         BuiltInConfigurationErrorOnLoad data = builtInConfigurationErrorOnLoad.getValue();
+        assertThat(data.getCollection(), equalTo(collection));
+        assertThat(data.getClazz(), equalTo(clazz));
         assertThat(data.getException(), equalTo(exception));
         assertThat(data.getPath(), equalTo("/path"));
     }

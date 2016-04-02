@@ -59,7 +59,7 @@ public class BuiltInConfiguration {
         String path = path(collection);
         InputStream stream = stream(clazz, path);
         if (stream == null) {
-            notFound.fire(new BuiltInConfigurationNotFound(clazz, path));
+            notFound.fire(new BuiltInConfigurationNotFound(collection, clazz, path));
             return cache.store(id, data);
         }
 
@@ -68,7 +68,7 @@ public class BuiltInConfiguration {
             data = reader.read(stream);
         }
         catch (IOException e) {
-            errorOnLoad.fire(new BuiltInConfigurationErrorOnLoad(path, e));
+            errorOnLoad.fire(new BuiltInConfigurationErrorOnLoad(collection, clazz, path, e));
         }
         return cache.store(id, data);
     }
