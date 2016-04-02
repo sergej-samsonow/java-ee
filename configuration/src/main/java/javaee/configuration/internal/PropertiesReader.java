@@ -11,6 +11,7 @@ public class PropertiesReader {
     public Map<String, String> read(InputStream stream) throws IOException {
         Properties properties = properties();
         properties.load(stream);
+        stream.close();
         return map(properties);
     }
 
