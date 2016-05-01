@@ -17,4 +17,8 @@ public class ConfigurationCache {
         cache.putIfAbsent(id, data == null ? new HashMap<>() : new HashMap<>(data));
         return get(id);
     }
+
+    public void delete(String id) {
+        cache.remove(id);
+    }
 }

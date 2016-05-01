@@ -2,74 +2,71 @@ package javaee.configuration.internal;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.HashMap;
-import java.util.Map;
 
-import javax.ejb.ConcurrencyManagement;
-import javax.ejb.ConcurrencyManagementType;
-import javax.ejb.Singleton;
 import javax.enterprise.event.Event;
-import javax.inject.Inject;
-import javax.validation.constraints.NotNull;
 
-import javaee.configuration.event.BuiltInConfigurationErrorOnLoad;
+import javaee.configuration.event.BuiltInPropertiesError;
 import javaee.configuration.event.BuiltInConfigurationNotFound;
 
-@Singleton
-@ConcurrencyManagement(ConcurrencyManagementType.BEAN)
-public class BuiltInConfiguration {
+public class BuiltInConfiguration extends PropertiesLoaderProcess {
 
-    private PropertiesReader reader = new PropertiesReader();
-    private ConfigurationCache cache = new ConfigurationCache();
+    private Class<?> clazz;
+    private InputStream stream;
 
-    @Inject
-    private Event<BuiltInConfigurationErrorOnLoad> errorOnLoad;
-
-    @Inject
     private Event<BuiltInConfigurationNotFound> notFound;
+    private Event<BuiltInPropertiesError> errorOnLoad;
 
-    protected String id(Class<?> clazz, String collection) {
-        return clazz.getName() + "." + collection;
+    @Override
+    public void prepare() {
+        openStream();
+        enable();
+        if (streamIsEmpty()) {
+            notFound.fire(new BuiltInConfigurationNotFound(getCollection(), getConfigurationFor(), getPath()));
+            disable();
+        }
     }
 
-    protected String path(String collection) {
-        return "/" + collection + ".properties";
+    public void setNotFound(Event<BuiltInConfigurationNotFound> notFound) {
+        this.notFound = notFound;
     }
 
-    protected InputStream stream(Class<?> clazz, String collection) {
-        return clazz.getResourceAsStream(collection);
+    public void setErrorOnLoad(Event<BuiltInPropertiesError> errorOnLoad) {
+        this.errorOnLoad = errorOnLoad;
     }
 
-    public @NotNull Map<String, String> data(Class<?> clazz, String collection) {
-        // validate parameter
-        Map<String, String> data = new HashMap<>();
-        if (clazz == null || collection == null) {
-            return data;
-        }
-
-        // return cached data if exists
-        String id = id(clazz, collection);
-        data = cache.get(id);
-        if (data != null) {
-            return data;
-        }
-        data = new HashMap<>();
-
-        // open stream
-        String path = path(collection);
-        InputStream stream = stream(clazz, path);
-        if (stream == null) {
-            notFound.fire(new BuiltInConfigurationNotFound(collection, clazz, path));
-            return cache.store(id, data);
-        }
-
-        // read stream
-        try {
-            data = reader.read(stream);
-        }
-        catch (IOException e) {
-            errorOnLoad.fire(new BuiltInConfigurationErrorOnLoad(collection, clazz, path, e));
-        }
-        return cache.store(id, data);
+    public void setConfigurationFor(Class<?> clazz) {
+        this.clazz = clazz;
     }
+
+    protected Class<?> getConfigurationFor() {
+        return clazz;
+    }
+
+    protected boolean streamIsEmpty() {
+        return stream == null;
+    }
+
+    protected void openStream() {
+        stream = clazz.getResourceAsStream(getPath());
+    }
+
+    protected String getPath() {
+        return "/" + getCollection() + ".properties";
+    }
+
+    @Override
+    public InputStream propertiesInputStream() {
+        return stream;
+    }
+
+    @Override
+    public void eventErrorOnPropertiesLoad(IOException exception) {
+        errorOnLoad.fire(new BuiltInPropertiesError(getCollection(), getConfigurationFor(), getPath(), exception));
+    }
+
+    @Override
+    public String cacheId() {
+        return getConfigurationFor().getName() + "." + getCollection();
+    }
+
 }

@@ -10,6 +10,8 @@ import java.util.Map;
 import org.junit.Before;
 import org.junit.Test;
 
+import javaee.configuration.internal.ConfigurationCache;
+
 public class ConfigurationCacheTest {
 
     private ConfigurationCache cache;
@@ -58,6 +60,13 @@ public class ConfigurationCacheTest {
     @Test
     public void storeNullValue() throws Exception {
         assertThat(cache.store("Y", null).size(), equalTo(0));
+    }
+
+    @Test
+    public void delete() throws Exception {
+        cache.store("x", data);
+        cache.delete("x");
+        assertThat(cache.get("x"), nullValue());
     }
 
 }

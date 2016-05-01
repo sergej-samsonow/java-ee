@@ -1,84 +1,72 @@
 package javaee.configuration.internal;
 
-import java.io.FileInputStream;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.HashMap;
-import java.util.Map;
 
-import javax.annotation.PostConstruct;
-import javax.annotation.Resource;
-import javax.ejb.ConcurrencyManagement;
-import javax.ejb.ConcurrencyManagementType;
-import javax.ejb.Singleton;
 import javax.enterprise.event.Event;
-import javax.validation.constraints.NotNull;
 
 import javaee.configuration.event.ServerConfigurationErrorOnLoad;
-import javaee.configuration.event.ServerConfigurationIsDisabled;
 import javaee.configuration.event.ServerConfigurationNotFound;
 
-@Singleton
-@ConcurrencyManagement(ConcurrencyManagementType.BEAN)
-public class ServerConfiguration {
+public class ServerConfiguration extends PropertiesLoaderProcess {
 
-    private PropertiesReader reader = new PropertiesReader();
-    private ConfigurationCache cache = new ConfigurationCache();
-
-    private Event<ServerConfigurationNotFound> notFound;
-    private Event<ServerConfigurationErrorOnLoad> errorOnLoad;
-    private Event<ServerConfigurationIsDisabled> isDisabled;
-
-    @Resource(mappedName = "java:comp/env/configuration")
     private String folder;
+    private Event<ServerConfigurationNotFound> notFoundEvent;
+    private Event<ServerConfigurationErrorOnLoad> erroOnLoadEvent;
+    private Path path;
 
-    protected InputStream stream(Path path) throws IOException {
-        return new FileInputStream(path.toFile());
+    public void setFolder(String folder) {
+        this.folder = folder;
     }
 
-    public Path path(String collection) {
-        return Paths.get(folder, collection + ".properties");
+    @Override
+    public void prepare() {
+        createPath();
+        if (pathExists()) {
+            enable();
+            return;
+        }
+        eventOnNotFound();
+        disable();
     }
 
-    @PostConstruct
-    protected void prepare() {
-        if (folder == null) {
-            isDisabled.fire(new ServerConfigurationIsDisabled());
-        }
+    public void setNotFoundEvent(Event<ServerConfigurationNotFound> notFoundEvent) {
+        this.notFoundEvent = notFoundEvent;
     }
 
-    public @NotNull Map<String, String> data(String collection) {
-
-        // validate parameter
-        Map<String, String> data = new HashMap<>();
-        if (folder == null || collection == null) {
-            return data;
-        }
-
-        // return cached data if exists
-        data = cache.get(collection);
-        if (data != null) {
-            return data;
-        }
-        data = new HashMap<>();
-
-        // check files exists
-        Path path = path(collection);
-        if (!Files.exists(path)) {
-            notFound.fire(new ServerConfigurationNotFound(collection, path.toString()));
-            return cache.store(collection, data);
-        }
-
-        // open and read file stream
-        try {
-            data = reader.read(stream(path));
-        }
-        catch (IOException e) {
-            errorOnLoad.fire(new ServerConfigurationErrorOnLoad(collection, path.toString(), e));
-        }
-        return cache.store(collection, data);
+    public void setErrorOnLoadEvent(Event<ServerConfigurationErrorOnLoad> erroOnLoadEvent) {
+        this.erroOnLoadEvent = erroOnLoadEvent;
     }
+
+    protected void eventOnNotFound() {
+        notFoundEvent.fire(new ServerConfigurationNotFound(getCollection(), path.toString()));
+    }
+
+    @Override
+    public void eventErrorOnPropertiesLoad(IOException exception) {
+        erroOnLoadEvent.fire(new ServerConfigurationErrorOnLoad(getCollection(), path.toString(), exception));
+    }
+
+    protected Path getPath() {
+        return path;
+    }
+
+    protected void createPath() {
+        String collection = getCollection();
+        path = Paths.get(folder, collection + ".properties");
+    }
+
+    protected boolean pathExists() {
+        return Files.exists(getPath());
+    }
+
+    @Override
+    public InputStream propertiesInputStream() throws IOException {
+        return new ByteArrayInputStream(Files.readAllBytes(getPath()));
+    }
+
 }

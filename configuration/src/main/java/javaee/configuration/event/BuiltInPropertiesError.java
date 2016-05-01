@@ -2,14 +2,14 @@ package javaee.configuration.event;
 
 import java.io.IOException;
 
-public class BuiltInConfigurationErrorOnLoad {
+public class BuiltInPropertiesError {
 
     private String collection;
     private Class<?> clazz;
     private String path;
     private IOException exception;
 
-    public BuiltInConfigurationErrorOnLoad(String collection, Class<?> clazz, String path, IOException exception) {
+    public BuiltInPropertiesError(String collection, Class<?> clazz, String path, IOException exception) {
         super();
         this.collection = collection;
         this.clazz = clazz;

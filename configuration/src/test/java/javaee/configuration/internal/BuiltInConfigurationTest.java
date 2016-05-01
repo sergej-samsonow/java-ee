@@ -2,30 +2,29 @@ package javaee.configuration.internal;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.mockito.Matchers.any;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.util.HashMap;
-import java.util.Map;
 
 import javax.enterprise.event.Event;
 
-import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
+import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.Spy;
 import org.mockito.runners.MockitoJUnitRunner;
 
-import javaee.configuration.event.BuiltInConfigurationErrorOnLoad;
+import javaee.configuration.event.BuiltInPropertiesError;
+import javaee.configuration.internal.BuiltInConfiguration;
 import javaee.configuration.event.BuiltInConfigurationNotFound;
 
 @RunWith(MockitoJUnitRunner.class)
@@ -33,133 +32,101 @@ public class BuiltInConfigurationTest {
 
     @Spy
     @InjectMocks
-    private BuiltInConfiguration configuration;
-
-    @Mock
-    private ConfigurationCache cache;
-
-    @Mock
-    private InputStream stream;
-
-    @Mock
-    private PropertiesReader reader;
+    private BuiltInConfiguration process;
 
     @Mock
     private Event<BuiltInConfigurationNotFound> notFound;
 
     @Mock
-    private Event<BuiltInConfigurationErrorOnLoad> errorOnLoad;
+    private Event<BuiltInPropertiesError> errorOnLoad;
 
-    private String id = "Unique.id";
-    private String collection = "x";
-    private String path = "/path";
-    private Class<?> clazz = String.class;
-    private Map<String, String> cachedResult = new HashMap<>();
-    private Map<String, String> storedResult = new HashMap<>();
+    @Captor
+    private ArgumentCaptor<BuiltInConfigurationNotFound> notFoundCaptor;
 
-    @Before
-    public void prepare() throws IOException {
-        cachedResult.put("cachedKey", "cachedValue");
-        storedResult.put("storedKye", "storedValue");
-        doReturn(id).when(configuration).id(clazz, collection);
-        doReturn(null).when(cache).get(id);
-        doReturn(path).when(configuration).path(collection);
-        doReturn(stream).when(configuration).stream(clazz, path);
-        doReturn(storedResult).when(cache).store(any(), any());
-        doReturn(new HashMap<>()).when(reader).read(stream);
+    @Captor
+    private ArgumentCaptor<BuiltInPropertiesError> errorOnLoadCaptor;
+
+    @Test
+    public void prepare() throws Exception {
+        doNothing().when(process).openStream();
+        doNothing().when(process).enable();
+        doReturn(false).when(process).streamIsEmpty();
+
+        process.setNotFound(notFound);
+        process.prepare();
+
+        InOrder order = Mockito.inOrder(process);
+        order.verify(process).openStream();
+        order.verify(process).enable();
+        order.verify(process).streamIsEmpty();
+        verify(notFound, never()).fire(notFoundCaptor.capture());
+        verify(process, never()).disable();
     }
 
     @Test
-    public void id() throws Exception {
-        assertThat(configuration.id(String.class, "data"), equalTo("java.lang.String.data"));
+    public void prepare2() throws Exception {
+        doNothing().when(process).openStream();
+        doNothing().when(process).enable();
+        doReturn(true).when(process).streamIsEmpty();
+
+        doReturn("C").when(process).getCollection();
+        doReturn(getClass()).when(process).getConfigurationFor();
+        doReturn("P").when(process).getPath();
+
+        process.setNotFound(notFound);
+        process.prepare();
+
+        InOrder order = inOrder(process, notFound);
+        order.verify(process).openStream();
+        order.verify(process).enable();
+        order.verify(process).streamIsEmpty();
+        order.verify(notFound).fire(notFoundCaptor.capture());
+        order.verify(process).disable();
+
+        assertThat(notFoundCaptor.getValue().getClazz(), equalTo(getClass()));
+        assertThat(notFoundCaptor.getValue().getCollection(), equalTo("C"));
+        assertThat(notFoundCaptor.getValue().getPath(), equalTo("P"));
     }
 
     @Test
-    public void path() throws Exception {
-        assertThat(configuration.path("data"), equalTo("/data.properties"));
+    public void cacheId() throws Exception {
+        doReturn(String.class).when(process).getConfigurationFor();
+        doReturn("C").when(process).getCollection();
+        assertThat(process.cacheId(), equalTo("java.lang.String.C"));
     }
 
     @Test
-    public void dataClazzParameterNull() throws Exception {
-        Map<String, String> result = configuration.data(null, "collection");
-        assertThat(result.size(), equalTo(0));
+    public void eventErrorOnPropertiesLoad() throws Exception {
+        doReturn("C").when(process).getCollection();
+        doReturn(getClass()).when(process).getConfigurationFor();
+        doReturn("P").when(process).getPath();
+        IOException exception = new IOException("E");
+
+        process.setErrorOnLoad(errorOnLoad);
+        process.eventErrorOnPropertiesLoad(exception);
+
+        verify(errorOnLoad).fire(errorOnLoadCaptor.capture());
+        assertThat(errorOnLoadCaptor.getValue().getClazz(), equalTo(getClass()));
+        assertThat(errorOnLoadCaptor.getValue().getCollection(), equalTo("C"));
+        assertThat(errorOnLoadCaptor.getValue().getPath(), equalTo("P"));
+        assertThat(errorOnLoadCaptor.getValue().getException(), equalTo(exception));
     }
 
     @Test
-    public void dataCollectionParameterNull() throws Exception {
-        Map<String, String> result = configuration.data(clazz, null);
-        assertThat(result.size(), equalTo(0));
+    public void getPath() throws Exception {
+        doReturn("C").when(process).getCollection();
+        assertThat(process.getPath(), equalTo("/C.properties"));
     }
 
     @Test
-    public void dataCacheCollectionReturnNull() throws Exception {
-        doReturn(null).when(cache).get(id);
-        configuration.data(clazz, collection);
-        verify(cache).get(id);
-        verify(configuration).path(collection);
+    public void streamIsEmptyByDefault() throws Exception {
+        assertThat(process.streamIsEmpty(), equalTo(true));
     }
 
     @Test
-    public void dataCacheCollectionReturnCollection() throws Exception {
-        doReturn(cachedResult).when(cache).get(id);
-        assertThat(configuration.data(clazz, collection), equalTo(cachedResult));
-        verify(cache).get(id);
-        verify(configuration, never()).path(collection);
-    }
-
-    @Test
-    public void dataStreamReturnObject() throws Exception {
-        configuration.data(clazz, collection);
-        verify(configuration).stream(clazz, path);
-        verify(reader).read(stream);
-    }
-
-    @Test
-    public void dataStreamReturnNull() throws Exception {
-        doReturn(null).when(configuration).stream(clazz, path);
-        configuration.data(clazz, collection);
-        verify(configuration).stream(clazz, path);
-        verify(reader, never()).read(any());
-    }
-
-    @Test
-    public void dataStreamFirePropertiesFileNotFound() throws Exception {
-        doReturn(null).when(configuration).stream(clazz, path);
-        ArgumentCaptor<BuiltInConfigurationNotFound> captor = ArgumentCaptor.forClass(BuiltInConfigurationNotFound.class);
-        configuration.data(clazz, collection);
-        verify(notFound).fire(captor.capture());
-        assertThat(captor.getValue().getCollection(), equalTo(collection));
-        assertThat(captor.getValue().getPath(), equalTo(path));
-        assertThat(captor.getValue().getClazz(), equalTo(clazz));
-    }
-
-    @SuppressWarnings("unchecked")
-    @Test
-    public void dataStreamStoreInvoked() throws Exception {
-        Map<String, String> map = new HashMap<>();
-        doReturn(null).when(configuration).stream(clazz, path);
-        configuration.data(clazz, collection);
-        verify(cache).store(any(String.class), any(map.getClass()));
-    }
-
-    @Test
-    public void dataStreamReturnStoredCollection() throws Exception {
-        doReturn(null).when(configuration).stream(clazz, path);
-        assertThat(configuration.data(clazz, collection), equalTo(storedResult));
-    }
-
-    @Test
-    public void dataIoExceptionEvent() throws Exception {
-        IOException exception = spy(new IOException("X"));
-        doThrow(exception).when(reader).read(stream);
-        ArgumentCaptor<BuiltInConfigurationErrorOnLoad> builtInConfigurationErrorOnLoad = ArgumentCaptor.forClass(BuiltInConfigurationErrorOnLoad.class);
-        configuration.data(clazz, collection);
-        verify(errorOnLoad).fire(builtInConfigurationErrorOnLoad.capture());
-        BuiltInConfigurationErrorOnLoad data = builtInConfigurationErrorOnLoad.getValue();
-        assertThat(data.getCollection(), equalTo(collection));
-        assertThat(data.getClazz(), equalTo(clazz));
-        assertThat(data.getException(), equalTo(exception));
-        assertThat(data.getPath(), equalTo("/path"));
+    public void configurationFor() throws Exception {
+        process.setConfigurationFor(String.class);
+        assertThat(process.getConfigurationFor(), equalTo(String.class));
     }
 
 }
