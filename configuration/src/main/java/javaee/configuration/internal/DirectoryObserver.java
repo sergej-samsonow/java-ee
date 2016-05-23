@@ -22,7 +22,7 @@ import javax.ejb.TransactionAttributeType;
 import javax.enterprise.event.Event;
 import javax.inject.Inject;
 
-import javaee.configuration.event.ObservationError;
+import javaee.configuration.event.DirectoryObservationError;
 
 @Singleton
 @ConcurrencyManagement(ConcurrencyManagementType.BEAN)
@@ -36,7 +36,7 @@ public class DirectoryObserver {
     private WatchService watcher;
 
     @Inject
-    private Event<ObservationError> observationError;
+    private Event<DirectoryObservationError> directoryObservationError;
 
     /**
      * Start directory observation. Transaction type not supported to avoid
@@ -73,7 +73,7 @@ public class DirectoryObserver {
             key.reset();
         }
         catch (Exception exception) {
-            observationError.fire(new ObservationError(folder.toString(), exception));
+            directoryObservationError.fire(new DirectoryObservationError(folder.toString(), exception));
         }
     }
 
@@ -96,7 +96,7 @@ public class DirectoryObserver {
         }
         catch (Exception exception) {
             stoped.set(true);
-            observationError.fire(new ObservationError(folder.toString(), exception));
+            directoryObservationError.fire(new DirectoryObservationError(folder.toString(), exception));
         }
     }
 

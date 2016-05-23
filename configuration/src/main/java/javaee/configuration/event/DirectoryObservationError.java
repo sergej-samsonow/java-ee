@@ -1,11 +1,11 @@
 package javaee.configuration.event;
 
-public class ObservationError {
+public class DirectoryObservationError {
 
     private String folder;
     private Exception exception;
 
-    public ObservationError(String folder, Exception exception) {
+    public DirectoryObservationError(String folder, Exception exception) {
         super();
         this.folder = folder;
     }
