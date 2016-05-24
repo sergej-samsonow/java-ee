@@ -13,8 +13,7 @@ public class NamedQueryWrapperErrorService {
 
     }
 
-    public void exceptionOnSetQueryParameter(Exception exception, String parameterName, Object parameterValue,
-            NamedQueryWrapper<?> wrapper) {
+    public void exceptionOnSetQueryParameter(Exception exception, String parameterName, Object parameterValue, NamedQueryWrapper<?> wrapper) {
 
     }
 
@@ -22,7 +21,7 @@ public class NamedQueryWrapperErrorService {
 
     }
 
-    public void exceptionOnFetchSingleResult(Exception exception, NamedQueryWrapper<?> queryWrapper) {
+    public void exceptionOnFetchSingleResult(Exception exception, NamedQueryWrapper<?> wrapper) {
 
     }
 
