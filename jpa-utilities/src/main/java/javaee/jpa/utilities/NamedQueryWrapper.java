@@ -54,10 +54,6 @@ public class NamedQueryWrapper<T> {
         parameters.put(name, value);
     }
 
-    public Object getParameter(String name) {
-        return parameters.get(name);
-    }
-
     protected void createQueryObject() {
         if (skip == true) {
             return;
