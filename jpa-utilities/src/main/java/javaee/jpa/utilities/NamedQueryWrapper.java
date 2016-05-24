@@ -84,10 +84,10 @@ public class NamedQueryWrapper<T> {
         }
     }
 
-    public List<T> list() {
+    public List<T> getList(List<T> fallback) {
         createQueryObject();
         passParameters();
-        List<T> result = null;
+        List<T> result = fallback;
         try {
             result = queryObject.getResultList();
         } catch (Exception exception) {
@@ -96,10 +96,10 @@ public class NamedQueryWrapper<T> {
         return result;
     }
 
-    public T one() {
+    public T getOne(T fallback) {
         createQueryObject();
         passParameters();
-        T result = null;
+        T result = fallback;
         try {
             result = queryObject.getSingleResult();
         } catch (NoResultException exception) {
