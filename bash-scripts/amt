@@ -1,0 +1,55 @@
+#!/bin/bash
+# amt - application management tools
+
+# export variable for command
+AMT_COMMAND="amt"
+set -a
+AMT_SCRIPT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ID="$(date '+%y%m%d%H%M%S')"
+AMT_CNF_FILE=$PWD/configuration
+AMT_PID_FILE=$PWD/application.pid
+AMT_LOG_FILE=$PWD/application.log
+
+function msg {
+    echo " * $1"
+    echo "$(date +%y-%m-%d\ %H:%M:%S).000 [amt][$AMT_COMMAND][$ID] $1" >> $AMT_LOG_FILE  
+}
+function info {
+    egrep -Ihr '#\s*amt.*' $AMT_SCRIPT_ROOT/command | sed 's/# *//'
+    echo "amt help - print this message"
+}
+
+# Load configuration exit if missing
+if [ -f $AMT_CNF_FILE ]
+then
+    source $AMT_CNF_FILE
+else
+    if [ $1 != "init" ]
+    then
+        msg "AMT - configuration file $AMT_CNF_FILE not found exit 1"
+        exit 1
+    fi
+fi
+set +a
+
+# Check command is passed other way show possible commands
+if [ $# -eq 0 ]
+then
+    info
+    exit 0
+fi
+
+if [ $1 == "help" ]
+then
+    info
+    exit 0
+fi
+
+if [ -f $AMT_SCRIPT_ROOT/command/$1 ]
+then
+    export AMT_COMMAND=$1
+    bash "$AMT_SCRIPT_ROOT/command/$1" "$@"
+else
+    msg "Unknow command $1 exit 1"
+    exit 1
+fi
