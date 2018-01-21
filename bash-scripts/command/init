@@ -1,0 +1,20 @@
+#!/bin/bash
+# amt init - create default configuration file
+
+if [ ! -f $AMT_CNF_FILE ]
+then
+cat > $AMT_CNF_FILE <<configuration_end
+#!/bin/bash
+# some optional amt vars
+# AMT_MAX_SECONDS_WAIT_FOR_START=10 # work only together with AMT_APPLICATION_READY_URL
+# AMT_APPLICATION_READY_URL="http://localhost:8080/internal/application-ready
+# AMT_MAX_SECONDS_WAIT_SHUTDOWN=60
+# required amt vars
+AMT_CMD=
+configuration_end
+    msg "Configuration file created please edit it"
+else 
+    msg "Configuration file already exists $AMT_CNF_FILE (exit 1)"
+    exit 1
+fi
+exit 0
