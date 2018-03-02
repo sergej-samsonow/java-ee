@@ -1,0 +1,86 @@
+#!/bin/bash
+# amt deploy <version> <environment> - deploy software version to environment
+
+# 1. load deployment configuration and verify it
+AMT_DEPLOY_SHARED_CONFIGURATION=$PWD/deploy/configuration
+AMT_DEPLOY_CONFIGURATION_ROOT_FOLDER=$PWD/deploy/$2
+if [ -z "$2" ]
+then
+    error "Deployment environment is missing"
+    exit 1
+fi
+
+if [ ! -d $AMT_DEPLOY_CONFIGURATION_ROOT_FOLDER ]
+then
+    error "Can't find $AMT_DEPLOY_CONFIGURATION_ROOT_FOLDER"
+    exit 1
+fi
+
+if [ -z "$3" ]
+then
+    error "Artifact version missing"
+    exit 1
+fi
+AMT_DEPLOY_ENVIRONMENT_INFO="Unknow environment"
+if [ -f $AMT_DEPLOY_SHARED_CONFIGURATION ]
+then
+    source $AMT_DEPLOY_SHARED_CONFIGURATION
+fi
+if [ -f $AMT_DEPLOY_CONFIGURATION_ROOT_FOLDER/configuration ]
+then
+    source $AMT_DEPLOY_CONFIGURATION_ROOT_FOLDER/configuration
+fi
+if [ -z "$AMT_DEPLOY_MAVEN_ARTIFACT_NAME" ]
+then
+    error "AMT_DEPLOY_MAVEN_ARTIFACT_NAME artifact name is missing"
+    exit 1
+fi
+if [ -z "$AMT_DEPLOY_MAVEN_FULL_PATH" ]
+then
+    error "AMT_DEPLOY_MAVEN_FULL_PATH path to artifact is"
+    exit 1
+fi
+
+# 2. load artifact 
+AMT_DEPLOYMENT_ARTIFACT=$AMT_DEPLOY_MAVEN_FULL_PATH/$3/$AMT_DEPLOY_MAVEN_ARTIFACT_NAME-$3.war
+if [ ! -f "$AMT_DEPLOYMENT_ARTIFACT" ]
+then
+    error "Artifact $AMT_DEPLOYMENT_ARTIFACT not found"
+    exit 1
+fi
+mkdir -p $AMT_TMP_FOLDER/deploy
+cp $AMT_DEPLOYMENT_ARTIFACT $AMT_TMP_FOLDER/deploy/application.war
+
+# 3. deploy artifact
+msg "---"
+msg "Deploy version    $3"
+msg "Environment:      $2"
+msg "Environment Info: $AMT_DEPLOY_ENVIRONMENT_INFO"
+for AMT_DEPLOY_HOST in $AMT_DEPLOY_CONFIGURATION_ROOT_FOLDER/servers/*
+do
+    AMT_DEPLOY_HOST_INFO="Unknow host"   
+    AMT_DEPLOY_SSH_CONNECTION="Unknow ssh connection"
+    AMT_DEPLOY_SSH_PATH="Unknow ssh path"
+    
+    if [ -f $AMT_DEPLOY_SHARED_CONFIGURATION ]
+    then
+        source $AMT_DEPLOY_SHARED_CONFIGURATION
+    fi
+    if [ -f $AMT_DEPLOY_CONFIGURATION_ROOT_FOLDER/configuration ]
+    then
+        source $AMT_DEPLOY_CONFIGURATION_ROOT_FOLDER/configuration
+    fi
+    source $AMT_DEPLOY_HOST
+    msg "---"
+    msg "Host:             $(basename "$AMT_DEPLOY_HOST")" 
+    msg "Host info:        $AMT_DEPLOY_HOST_INFO"
+    msg "SSH connection:   $AMT_DEPLOY_SSH_CONNECTION"
+    msg "SSH path:         $AMT_DEPLOY_SSH_PATH"
+    msg "---"
+    
+    ssh $AMT_DEPLOY_SSH_CONNECTION "cd $AMT_DEPLOY_SSH_PATH && source $AMT_DEPLOY_SSH_PATH/.profile && amt stop"
+    scp $AMT_TMP_FOLDER/deploy/application.war $AMT_DEPLOY_SSH_CONNECTION:/$AMT_DEPLOY_SSH_PATH/application.war
+    ssh $AMT_DEPLOY_SSH_CONNECTION "cd $AMT_DEPLOY_SSH_PATH && source $AMT_DEPLOY_SSH_PATH/.profile && amt start"
+done
+msg "deployment done deployed version: $3"
+exit 0
