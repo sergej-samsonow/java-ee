@@ -78,9 +78,9 @@ do
     msg "SSH path:         $AMT_DEPLOY_SSH_PATH"
     msg "---"
     
-    ssh $AMT_DEPLOY_SSH_CONNECTION "cd $AMT_DEPLOY_SSH_PATH && source $AMT_DEPLOY_SSH_PATH/.profile && amt stop"
-    scp $AMT_TMP_FOLDER/deploy/application.war $AMT_DEPLOY_SSH_CONNECTION:/$AMT_DEPLOY_SSH_PATH/application.war
-    ssh $AMT_DEPLOY_SSH_CONNECTION "cd $AMT_DEPLOY_SSH_PATH && source $AMT_DEPLOY_SSH_PATH/.profile && amt start"
+    ssh $AMT_DEPLOY_SSH_CONNECTION "cd $AMT_DEPLOY_SSH_PATH && source $AMT_DEPLOY_SSH_PATH/.profile && amt stop"  > $AMT_STDOUT 2>&1
+    scp $AMT_TMP_FOLDER/deploy/application.war $AMT_DEPLOY_SSH_CONNECTION:/$AMT_DEPLOY_SSH_PATH/application.war   > $AMT_STDOUT 2>&1
+    ssh $AMT_DEPLOY_SSH_CONNECTION "cd $AMT_DEPLOY_SSH_PATH && source $AMT_DEPLOY_SSH_PATH/.profile && amt start" > $AMT_STDOUT 2>&1
 done
 msg "deployment done deployed version: $3"
 exit 0

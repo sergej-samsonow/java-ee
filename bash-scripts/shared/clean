@@ -1,5 +1,8 @@
 #!/bin/bash
 # amt clean - remove all amt related files
 
-rm -rf $AMT_WORKING_DIRECTORY/.amt
-rm -rf $AMT_WORKING_DIRECTORY/application.*
+msg "remove .amt working directory"
+rm -rf $AMT_WORKING_DIRECTORY/.amt  > $AMT_STDOUT 2>&1
+
+msg "remove application.* files"
+rm -rf $AMT_WORKING_DIRECTORY/application.*  > $AMT_STDOUT 2>&1
