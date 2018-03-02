@@ -43,8 +43,9 @@ function info {
     if [ -d command ]
     then
         egrep -Ihr '#\s*amt.*' $AMT_SCRIPT_ROOT/command | sed 's/# *//'
+    else 
+        echo "amt install <server|ci|development - default> - install amt environment" 
     fi
-    echo "amt install <server|ci|development - default> - install amt environment" 
     echo "amt help - print this message"
     unlock
 }
@@ -82,13 +83,13 @@ then
 fi
 if [ $1 == "install" ]
 then
-    AMT_ENVIRONMENT=develop
-    if [ $2 == "ci" ]
+    AMT_ENVIRONMENT=development
+    if [ "$2" == "ci" ]
+    then
         AMT_ENVIRONMENT=ci
+    elif [ "$2" == "server" ]
     then
-    elif [ $2 == "server" ]
         AMT_ENVIRONMENT=server
-    then
     fi
 
     # change into amt script folder
@@ -102,6 +103,7 @@ then
         cp -r server/* command
     fi
     echo " * done"
+    unlock
     exit 0
 fi
 
