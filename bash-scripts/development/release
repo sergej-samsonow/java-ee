@@ -1,0 +1,63 @@
+#!/bin/bash
+# amt release - trigger release build on ci system
+
+# 1. check anything is configured
+if [ -z "$AMT_GIT_REPOSITORY" ]
+then
+    error "AMT_GIT_REPOSITORY is not set can't continue (exit 1)"
+    exit 1
+fi
+if [ -z "$AMT_REMOTE_RELEASE_CMD" ]
+then
+    error "AMT_REMOTE_RELEASE_CMD is not set can't continue (exit 1)"
+    exit 1
+fi 
+
+# 2. checkout project master branch from git repository
+rm    -rf $AMT_TMP_FOLDER/release
+mkdir -p  $AMT_TMP_FOLDER/release
+AMT_LOCAL_REPOSITORY=$AMT_TMP_FOLDER/release/source
+msg "Clone git repository to $AMT_LOCAL_REPOSITORY"
+git clone $AMT_GIT_REPOSITORY $AMT_LOCAL_REPOSITORY  > $AMT_STDOUT 2>&1
+if [ $? != 0 ]
+then
+    error "Can't clone repository"
+    exit 1 
+fi
+cd $AMT_LOCAL_REPOSITORY
+
+# 3. check if release-candidate exists
+git checkout tags/release-candidate -b release-candidate  > $AMT_STDOUT 2>&1
+if [ $? == 0 ]
+then
+    msg "An other release process is ongoing wait or remove release-candidate tag (exit 1)"
+    exit 1
+fi 
+
+# 4. switch to master and merge master ino release candidate tag
+msg "Create release candidate tag"
+git checkout master  > $AMT_STDOUT 2>&1
+if [ $? != 0 ]
+then
+    error "Can't checkout master branch" 
+    exit 1
+fi
+
+git tag release-candidate  > $AMT_STDOUT 2>&1
+if [ $? != 0 ]
+then
+    error "Can't create release candidate tag" 
+    exit 1
+fi
+
+git push origin release-candidate  > $AMT_STDOUT 2>&1
+if [ $? != 0 ]
+then
+    error "Can't push release candidate tag into remote repository"
+    exit 1
+fi
+
+# 5. trigger build process on continius intergration 
+msg "Trigger remote release"
+$AMT_REMOTE_RELEASE_CMD
+exit 0
