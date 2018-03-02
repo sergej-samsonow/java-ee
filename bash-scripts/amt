@@ -40,7 +40,11 @@ function msg {
     echo "INFO $(date +%y-%m-%d\ %H:%M:%S).000 [amt][$AMT_COMMAND][$ID] $1" >> $AMT_LOG_FILE
 }
 function info {
-    egrep -Ihr '#\s*amt.*' $AMT_SCRIPT_ROOT/command | sed 's/# *//'
+    if [ -d command ]
+    then
+        egrep -Ihr '#\s*amt.*' $AMT_SCRIPT_ROOT/command | sed 's/# *//'
+    fi
+    echo "amt install <server|ci|development - default> - install amt environment" 
     echo "amt help - print this message"
     unlock
 }
@@ -54,7 +58,7 @@ if [ -f $AMT_CNF_FILE ]
 then
     source $AMT_CNF_FILE
 else
-    if [ "$1" != "init" ] && [ "$1" != "clean" ] && [ $# -ne 0 ]
+    if [ "$1" != "init" ] && [ "$1" != "clean" ] && [ $# -ne 0 ] && [ "$1" != "install" ]
     then
         error "AMT - configuration file $AMT_CNF_FILE not found"
         exit 1
@@ -76,6 +80,27 @@ then
     info
     exit 0
 fi
+if [ $1 == "install" ]
+then
+    AMT_ENVIRONMENT=develop
+    if [ $2 == "ci" ]
+        AMT_ENVIRONMENT=ci
+    then
+    elif [ $2 == "server" ]
+        AMT_ENVIRONMENT=server
+    then
+    fi
+
+    # change into amt script folder
+    cd "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    echo " * install $AMT_ENVIRONMENT in $PWD" 
+    rm -rf command
+    cp -r shared command 
+    cp -r $AMT_ENVIRONMENT/* command
+    echo " * done"
+    exit 0
+fi
+
 if [ -f $AMT_SCRIPT_ROOT/command/$1 ]
 then
     export AMT_COMMAND=$1
