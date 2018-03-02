@@ -1,0 +1,242 @@
+#!/bin/bash
+# amt release - create a new application release
+
+# 1. checkout project from git repository
+if [ -z "$AMT_GIT_REPOSITORY" ]
+then
+    error "AMT_GIT_REPOSITORY is not set can't continue"
+    exit 1
+fi
+if [ -z "$AMT_MAVEN_REPOSITORY_ROOT_FOLDER" ]
+then
+    error "AMT_MAVEN_REPOSITORY_ROOT_FOLDER is not set can't continue"
+    exit 1
+elif [ ! -d $AMT_MAVEN_REPOSITORY_ROOT_FOLDER ]
+then 
+    error "AMT_MAVEN_REPOSITORY_ROOT_FOLDER $AMT_MAVEN_REPOSITORY_ROOT_FOLDER not found!"
+    exit 1
+fi 
+rm    -rf $AMT_TMP_FOLDER/release
+mkdir -p  $AMT_TMP_FOLDER/release
+AMT_LOCAL_REPOSITORY=$AMT_TMP_FOLDER/release/source
+msg "Clone git repository to $AMT_LOCAL_REPOSITORY"
+git clone $AMT_GIT_REPOSITORY $AMT_LOCAL_REPOSITORY > $AMT_STDOUT 2>&1
+if [ $? != 0 ]
+then
+    error "Can't clone git repository $AMT_GIT_REPOSITORY"
+    exit 1
+fi
+cd $AMT_LOCAL_REPOSITORY
+git checkout tags/release-candidate -b prepare-release > $AMT_STDOUT 2>&1
+if [ $? != 0 ]
+then
+    error "Release candidate tag not found"
+    exit 1
+fi 
+AMT_GIT_WORKING_PATH=$AMT_LOCAL_REPOSITORY
+if [ ! -z "$AMT_GIT_PATH" ]
+then
+    AMT_GIT_WORKING_PATH="$AMT_LOCAL_REPOSITORY/$AMT_GIT_PATH"
+fi
+cd $AMT_GIT_WORKING_PATH
+
+# 2. extract current artifact version from pom.xml
+AMT_CURRENT_VERSION=$(cat pom.xml | grep -Po '(?<=<version>)[^<]+' | head -n 1)
+AMT_CURRENT_VERSION_DATE=$(echo $AMT_CURRENT_VERSION | egrep -o "[0-9]{4}-[0-9]{2}")
+AMT_YEAR_MONTH_TODAY=$(date +%Y-%m)
+AMT_NEW_VERSION="$AMT_YEAR_MONTH_TODAY.001"
+if [ "$AMT_YEAR_MONTH_TODAY" == "$AMT_CURRENT_VERSION_DATE" ]
+then
+    AMT_NEW_VERSION=$AMT_YEAR_MONTH_TODAY.$(printf '%03d' $(( 10#$(echo $AMT_CURRENT_VERSION | egrep -o '[0-9]{1,3}$') + 1 )) )
+fi
+
+# 3. extract group id and artifact id
+set -a
+AMT_MVN_GROUP=$(echo $(cat pom.xml | grep -Po '(?<=<groupId>)[^<]+' | head -n 1) | sed 's:\.:/:g' )
+AMT_MVN_ARTIFACT=$(echo $(cat pom.xml | grep -Po '(?<=<artifactId>)[^<]+' | head -n 1)  | sed 's:\.:/:g' )
+AMT_MVN_PATH=$AMT_MAVEN_REPOSITORY_ROOT_FOLDER/$AMT_MVN_GROUP/$AMT_MVN_ARTIFACT
+AMT_MVN_VERSION_PATH=$AMT_MVN_PATH/$AMT_NEW_VERSION
+set +a
+msg "current version: $AMT_CURRENT_VERSION"
+msg "new version: $AMT_NEW_VERSION"
+
+# 4. check is artifact stored or not backup metadata
+if [ -d $AMT_MVN_VERSION_PATH ]
+then
+    error "$AMT_NEW_VERSION is already stored increment build number manualy"
+    exit 1
+fi
+if [ -d $AMT_MVN_PATH ]
+then
+    cp -r $AMT_MVN_PATH $AMT_TMP_FOLDER/release/repository-backup
+fi
+
+# 6. generate settings.xml and build artifact
+msg "generate settings.xml"
+AMT_MAVEN_SETTINGS=$AMT_TMP_FOLDER/release/settings.xml
+mkdir -p $AMT_TMP_FOLDER/release/maven-local-repository
+cat > $AMT_MAVEN_SETTINGS <<end_settings_xml
+<?xml version="1.0" encoding="UTF-8"?>
+<settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 http://maven.apache.org/xsd/settings-1.0.0.xsd">
+    <localRepository>$AMT_TMP_FOLDER/release/maven-local-repository</localRepository>
+</settings>
+end_settings_xml
+cd $AMT_GIT_WORKING_PATH
+msg "update pom.xml to new version: $AMT_NEW_VERSION"
+mvn -Djava.net.preferIPv4Stack=true --global-settings $AMT_MAVEN_SETTINGS --settings $AMT_MAVEN_SETTINGS clean versions:set -DnewVersion=$AMT_NEW_VERSION > $AMT_STDOUT 2>&1
+if [ $? != 0 ]
+then
+    error "Can't change maven version"
+    exit 1
+fi
+msg "build project and deploy into maven repository"
+mvn -Djava.net.preferIPv4Stack=true --global-settings $AMT_MAVEN_SETTINGS --settings $AMT_MAVEN_SETTINGS clean deploy -DaltDeploymentRepository="ayn-repository-upload::default::file://$AMT_MAVEN_REPOSITORY_ROOT_FOLDER" > $AMT_STDOUT 2>&1
+if [ $? != 0 ]
+then
+    error "Can't build maven artifact"
+    exit 1
+fi
+mv target/$AMT_MVN_ARTIFACT-$AMT_NEW_VERSION.war target/application.war
+
+function revert {
+  if [ -d $AMT_TMP_FOLDER/release/repository-backup ]
+  then
+      error "$1 - revert maven repository"
+      rm -r $AMT_MVN_PATH
+      mv  $AMT_TMP_FOLDER/release/repository-backup $AMT_MVN_PATH
+  else
+      if [ -d $AMT_MVN_PATH ]
+      then 
+            rm -rf $AMT_MVN_PATH
+      fi 
+      error $1
+  fi
+}
+
+# 7. execute post integration tests
+if [ -d "$AMT_GIT_WORKING_PATH/integration-test" ]
+then
+    msg "create integration test configuration"
+    cp $AMT_CNF_FILE configuration
+    echo "INTEGRATION_TESTS_PATH=$AMT_GIT_WORKING_PATH/integration-test" >> configuration
+    chmod u+x scripts/server/start
+    chmod u+x scripts/server/stop
+    chmod u+x scripts/test/integration-test
+    chmod u+x scripts/test/integration-test-start-server
+    chmod u+x scripts/test/integration-test-stop-server
+    set +e
+    scripts/test/integration-test-start-server --configuration-file=configuration --jar-file=target/application.war
+    if [ $? != 0 ]
+    then
+        revert "can't start service for integration tests"
+        exit 1
+    fi
+    scripts/test/integration-test --exit-on-err=true
+    if [ $? != 0 ]
+    then
+        revert "error on integration test"
+        exit 1
+    fi
+    scripts/test/integration-test-stop-server
+    if [ $? != 0 ]
+    then
+        revert "can't stop integration test server"
+        exit 1
+    fi
+fi
+
+# 8 commit changes
+cd $AMT_LOCAL_REPOSITORY
+msg "Git update pom"
+git add pom.xml > $AMT_STDOUT 2>&1
+if [ $? != 0 ]
+then
+     revert "git can't add modified pom.xml"
+     exit 1
+fi
+git commit -m "New release version: $AMT_NEW_VERSION" > $AMT_STDOUT 2>&1
+if [ $? != 0 ]
+then
+     revert "git can't commit git changes"
+     exit 1
+fi
+msg "Git update master branch"
+git checkout master > $AMT_STDOUT 2>&1
+if [ $? != 0 ]
+then
+     revert "can't checkout master branch"
+     exit 1
+fi 
+git merge prepare-release > $AMT_STDOUT 2>&1
+if [ $? != 0 ]
+then
+     revert "can't merge prepare-release branch into master"
+     exit 1
+fi
+msg "Git update release branch and add tag $AMT_NEW_VERSION"
+git checkout release > $AMT_STDOUT 2>&1
+if [ $? != 0 ]
+then
+     revert "can't checkout release branch"
+     exit 1
+fi
+git pull > $AMT_STDOUT 2>&1
+if [ $? != 0 ]
+then
+     revert "can't pull on release branch"
+     exit 1
+fi
+git merge master > $AMT_STDOUT 2>&1
+if [ $? != 0 ]
+then
+     revert "can't merge master branch into release"
+     exit 1
+fi
+git tag $AMT_NEW_VERSION > $AMT_STDOUT 2>&1
+if [ $? != 0 ]
+then
+     revert "can't create $AMT_NEW_VERSION tag"
+     exit 1
+fi
+msg "Git remove prepare-release branch and release-candidate branch"
+git branch -d prepare-release > $AMT_STDOUT 2>&1
+if [ $? != 0 ]
+then
+     revert "can't delete prepare-release branch"
+     exit 1
+fi
+git tag -d release-candidate > $AMT_STDOUT 2>&1
+if [ $? != 0 ]
+then
+     revert "can't delete LOCAL release-candidate branch"
+     exit 1
+fi 
+msg "Git update remote repository"
+git push origin master > $AMT_STDOUT 2>&1
+if [ $? != 0 ]
+then
+     revert "can't push master branch"
+     exit 1
+fi 
+git push origin release > $AMT_STDOUT 2>&1
+if [ $? != 0 ]
+then
+     revert "can't push release branch"
+     exit 1
+fi
+git push origin $AMT_NEW_VERSION > $AMT_STDOUT 2>&1
+if [ $? != 0 ]
+then
+     revert "can't push $AMT_NEW_VERSION tag"
+     exit 1
+fi
+git push origin :refs/tags/release-candidate > $AMT_STDOUT 2>&1
+if [ $? != 0 ]
+then
+     revert "can't delete REMOTE release-candidate branch"
+     exit 1
+fi 
+msg "release done released version: $AMT_NEW_VERSION"
+exit 0
