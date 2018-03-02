@@ -1,22 +1,52 @@
 #!/bin/bash
 # amt - application management tools
 
-# export variable for command
+# Lock project to avoid concurent execution
 AMT_COMMAND="amt"
+if [ -f $PWD/.amt/lock ]
+then
+    echo "exit an other one amt script is executed here: $PWD"
+    exit 1
+else
+    mkdir -p $PWD/.amt
+    echo $$ > $PWD/.amt/lock # pid of current bash process
+fi
+
+
+# Start export variables area
 set -a
+
+# Check if debug is enabled
+AMT_STDOUT=/dev/null
+if [ ! -z "$AMT_DEBUG_MODE" ] && [ $AMT_DEBUG_MODE == "true" ]
+then
+    AMT_STDOUT=/dev/stdout
+fi
+
+# Define other settings
 AMT_SCRIPT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ID="$(date '+%y%m%d%H%M%S')"
 AMT_CNF_FILE=$PWD/configuration
 AMT_PID_FILE=$PWD/application.pid
 AMT_LOG_FILE=$PWD/application.log
-
+AMT_TMP_FOLDER=$PWD/.amt/tmp
+AMT_WORKING_DIRECTORY=$PWD
+mkdir -p $AMT_TMP_FOLDER
+function unlock {
+    rm -f $PWD/.amt/lock
+}
 function msg {
     echo " * $1"
-    echo "$(date +%y-%m-%d\ %H:%M:%S).000 [amt][$AMT_COMMAND][$ID] $1" >> $AMT_LOG_FILE  
+    echo "INFO $(date +%y-%m-%d\ %H:%M:%S).000 [amt][$AMT_COMMAND][$ID] $1" >> $AMT_LOG_FILE
 }
 function info {
     egrep -Ihr '#\s*amt.*' $AMT_SCRIPT_ROOT/command | sed 's/# *//'
     echo "amt help - print this message"
+    unlock
+}
+function error {
+    msg "$1 (exit 1)"
+    unlock
 }
 
 # Load configuration exit if missing
@@ -24,13 +54,16 @@ if [ -f $AMT_CNF_FILE ]
 then
     source $AMT_CNF_FILE
 else
-    if [ $1 != "init" ]
+    if [ "$1" != "init" ] && [ "$1" != "clean" ] && [ $# -ne 0 ]
     then
-        msg "AMT - configuration file $AMT_CNF_FILE not found exit 1"
+        error "AMT - configuration file $AMT_CNF_FILE not found"
         exit 1
     fi
 fi
+
 set +a
+# End export variables area
+
 
 # Check command is passed other way show possible commands
 if [ $# -eq 0 ]
@@ -38,18 +71,20 @@ then
     info
     exit 0
 fi
-
 if [ $1 == "help" ]
 then
     info
     exit 0
 fi
-
 if [ -f $AMT_SCRIPT_ROOT/command/$1 ]
 then
     export AMT_COMMAND=$1
     bash "$AMT_SCRIPT_ROOT/command/$1" "$@"
+    AMT_EXIT_STATUS=$?
+    unlock
+    exit $AMT_EXIT_STATUS
 else
-    msg "Unknow command $1 exit 1"
+    error "Unknow command $1"
     exit 1
 fi
+
